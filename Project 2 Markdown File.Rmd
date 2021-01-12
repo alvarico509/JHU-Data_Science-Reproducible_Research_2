@@ -1,0 +1,98 @@
+---
+title: TITLE THAT SUMMARIZES THE DATA ANALYSIS
+author: "Alvaro Lozano Alonso"
+date: "1/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Synopsis
+
+# Libraries
+
+```{r}
+library(dplyr)
+```
+
+
+# Loading and Processing the Raw Data
+
+```{r, cache=TRUE}
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", "StormData.csv.bz2")
+stormData <- read.csv("StormData.csv.bz2")
+```
+
+Let's have an overview of the data.
+```{r}
+head(stormData)
+```
+
+# Description of the variables
+
+```{r}
+populationHealth <- stormData %>% select(EVTYPE, FATALITIES, INJURIES) %>% group_by(EVTYPE) %>% summarise(FATALITIES = sum(FATALITIES), INJURIES = sum(INJURIES), .groups="drop") %>% filter(FATALITIES != 0 & INJURIES != 0) %>% arrange(desc(FATALITIES), desc(INJURIES))
+```
+
+
+```{r}
+ecoConseq <- stormData %>% select(EVTYPE, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
+unique(ecoConseq$PROPDMGEXP)
+```
+
+```{r}
+# Numeric exponent for PROPDMG
+ecoConseq$PROPDMGEXP_NUM[is.na(ecoConseq$PROPDMGEXP)] <- 1
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "?" & !is.na(ecoConseq$PROPDMGEXP)] <- 0
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == ""  & !is.na(ecoConseq$PROPDMGEXP)] <- 1
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "+" & !is.na(ecoConseq$PROPDMGEXP)] <- 1
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "-" & !is.na(ecoConseq$PROPDMGEXP)] <- 1
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "0" & !is.na(ecoConseq$PROPDMGEXP)] <- 1
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "1" & !is.na(ecoConseq$PROPDMGEXP)] <- 10
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "2" & !is.na(ecoConseq$PROPDMGEXP)] <- 100
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "3" & !is.na(ecoConseq$PROPDMGEXP)] <- 1000
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "4" & !is.na(ecoConseq$PROPDMGEXP)] <- 10000
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "5" & !is.na(ecoConseq$PROPDMGEXP)] <- 100000
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "6" & !is.na(ecoConseq$PROPDMGEXP)] <- 1000000
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "7" & !is.na(ecoConseq$PROPDMGEXP)] <- 10000000
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "8" & !is.na(ecoConseq$PROPDMGEXP)] <- 100000000
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "B" & !is.na(ecoConseq$PROPDMGEXP)] <- 1000000000
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "H" & !is.na(ecoConseq$PROPDMGEXP)] <- 100
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "h" & !is.na(ecoConseq$PROPDMGEXP)] <- 100
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "K" & !is.na(ecoConseq$PROPDMGEXP)] <- 1000
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "M" & !is.na(ecoConseq$PROPDMGEXP)] <- 1000000
+ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "m" & !is.na(ecoConseq$PROPDMGEXP)] <- 1000000
+```
+
+```{r}
+unique(ecoConseq$CROPDMGEXP)
+```
+
+```{r}
+## Numeric exponent for CROPDMG
+ecoConseq$CROPDMGEXP_NUM[is.na(ecoConseq$CROPDMGEXP)] <- 1
+ecoConseq$CROPDMGEXP_NUM[ecoConseq$CROPDMGEXP == "?" & !is.na(ecoConseq$CROPDMGEXP)] <- 0
+ecoConseq$CROPDMGEXP_NUM[ecoConseq$CROPDMGEXP == ""  & !is.na(ecoConseq$CROPDMGEXP)] <- 1
+ecoConseq$CROPDMGEXP_NUM[ecoConseq$CROPDMGEXP == "0" & !is.na(ecoConseq$CROPDMGEXP)] <- 1
+ecoConseq$CROPDMGEXP_NUM[ecoConseq$CROPDMGEXP == "2" & !is.na(ecoConseq$CROPDMGEXP)] <- 100
+ecoConseq$CROPDMGEXP_NUM[ecoConseq$CROPDMGEXP == "K" & !is.na(ecoConseq$CROPDMGEXP)] <- 1000
+ecoConseq$CROPDMGEXP_NUM[ecoConseq$CROPDMGEXP == "k" & !is.na(ecoConseq$CROPDMGEXP)] <- 1000
+ecoConseq$CROPDMGEXP_NUM[ecoConseq$CROPDMGEXP == "M" & !is.na(ecoConseq$CROPDMGEXP)] <- 1000000
+ecoConseq$CROPDMGEXP_NUM[ecoConseq$CROPDMGEXP == "m" & !is.na(ecoConseq$CROPDMGEXP)] <- 1000000
+ecoConseq$CROPDMGEXP_NUM[ecoConseq$CROPDMGEXP == "B" & !is.na(ecoConseq$CROPDMGEXP)] <- 1000000000
+```
+
+```{r}
+ecoConseq$CALPROPDMG <- ecoConseq$PROPDMG * ecoConseq$PROPDMGEXP_NUM
+ecoConseq$CALCROPDMG <- ecoConseq$CROPDMG * ecoConseq$CROPDMGEXP_NUM
+calEcoConseq <- ecoConseq %>% select(EVTYPE, CALPROPDMG, CALCROPDMG) %>% filter(CALPROPDMG != 0 & CALCROPDMG != 0) 
+```
+
+# Results
+
+#
+
+
+
