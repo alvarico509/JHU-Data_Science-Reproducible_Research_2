@@ -1,5 +1,5 @@
 ---
-title: TITLE THAT SUMMARIZES THE DATA ANALYSIS
+title: Health and Economic consequences due to weather events across the United States of America (1950 - 2011)
 author: "Alvaro Lozano Alonso"
 date: "1/11/2021"
 output: html_document
@@ -9,39 +9,85 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Synopsis
+# Synopsis  
+
+In this report we aim to explore the NOAA Storm Database and answer two questions: Which types of events are most harmful with respect to population health, and which types of events have the greatest economic consequences in the USA. The events in the database start in the year 1950 and end in November 2011. To answer the first questions, we analyzed the database, specifically, the variables `EVTYPE`, `FATALITIES` and `INJURIES`. And we found out that, by far, the worst event is the tornado, followed by excessive heat and flash food. To answer the second question, we analyzed the variables `EVTYPE`, `PROPDMG`, `CROPDMG`, `PROPDMGEXP` and `CROPDMGEXP`. In this case, data shows that floods cause the worst economic consequences, followed by hurricanes/typhoons and tornados.  
 
 # Libraries
 
-```{r}
+First we need to load some handy libraries to process the data.
+```{r, message=FALSE}
 library(dplyr)
+library(reshape2)
+library(ggplot2)
 ```
-
 
 # Loading and Processing the Raw Data
 
+## Loading data
+
+We set our working directory and donwload the dataset from the [link](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2). After doing so, we read the dataset into a new variable called `stormData`.
 ```{r, cache=TRUE}
-download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", "StormData.csv.bz2")
+setwd("~/Documents/Dokumente - MacBook Air/Data Science with R - Johns Hopkins University/Reproducible Research/JHU-Data_Science-Reproducible_Research_2")
+if (!file.exists("StormData.csv.bz2")) {
+  download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", "StormData.csv.bz2")
+}
+downloadedDate <- file.info("StormData.csv.bz2")$ctime
 stormData <- read.csv("StormData.csv.bz2")
+print(paste("File was downloaded on", downloadedDate))
 ```
 
-Let's have an overview of the data.
+## Overview  
+
+It is always useful to have an overview of the data.
 ```{r}
-head(stormData)
+str(stormData)
 ```
+The variables that are going to be used in the analysis are:  
+`EVTYPE`: The event type, for example: Tornado, Flood, High wind...  
+`FATALITIES`: The number of deceased people in a particular event.  
+`INJURIES`: The number of people that suffered injuries in a particular event.  
+`PROPDMG`: The base number of the property damages occurred in a particular event.  
+`PROPDMGEXP`: The exponent of the property damages occurred in a particular event. For example `K` as 1.000  
+`CROPDMG`: The base number of the crop damages occurred in a particular event.  
+`CROPDMGEXP`: The exponent of the crop damages occurred in a particular event. For example `B` as 1.000.000.000  
 
-# Description of the variables
+## Processing the data: Events that are most harmful with respect to population health  
 
+To answer the first question ("Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?") we need to group all the observations by the event type and sum all the fatalities and injuries. Then, we sort them in descent order to find out which are the first 15 types of events that have the worst effect with respect to population health.
 ```{r}
 populationHealth <- stormData %>% select(EVTYPE, FATALITIES, INJURIES) %>% group_by(EVTYPE) %>% summarise(FATALITIES = sum(FATALITIES), INJURIES = sum(INJURIES), .groups="drop") %>% filter(FATALITIES != 0 & INJURIES != 0) %>% arrange(desc(FATALITIES), desc(INJURIES))
+
+# Create new variable to store the first 15 events
+top15populationHealth <- head(populationHealth, 15)
+
+# Set EVTYPE as factor variable so that plot is sort properly
+top15populationHealth$EVTYPE <- factor(top15populationHealth$EVTYPE, levels=unique(top15populationHealth$EVTYPE))
+
+# Prepare the data for the barplot
+splitPopH <- melt(top15populationHealth, id.vars="EVTYPE")
+
+# Create the plot
+popHplot <- ggplot(splitPopH, aes(x=EVTYPE, y=value, fill=variable)) +
+            geom_bar(position='dodge', stat='identity') +
+            theme(axis.text.x=element_text(angle=90, hjust=1, vjust=.25), legend.title=element_blank()) +
+            ylab("Fatalities & Injuries") +
+            xlab("Event Type") +
+            ggtitle("Total Fatalities and Injuries caused by Extreme Weather in the USA (1950 - 2011)")
 ```
+  
+## Processing the data: Events that have the greatest economic consequences  
 
-
+Before any calculations, we need to prepare the data. We create a new dataframe with the variables of interest. After that, we need to format the exponents.
 ```{r}
+# Set a new variable that stores only the variables that are necessary
 ecoConseq <- stormData %>% select(EVTYPE, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
+
+# Get the unique values for the PROPDMGEXP variable
 unique(ecoConseq$PROPDMGEXP)
 ```
 
+As we can see, the exponents have characters that need to be formatted to operate. We format them as it follows:
 ```{r}
 # Numeric exponent for PROPDMG
 ecoConseq$PROPDMGEXP_NUM[is.na(ecoConseq$PROPDMGEXP)] <- 1
@@ -67,9 +113,11 @@ ecoConseq$PROPDMGEXP_NUM[ecoConseq$PROPDMGEXP == "m" & !is.na(ecoConseq$PROPDMGE
 ```
 
 ```{r}
+# Get the unique values for the CROPDMGEXP variable
 unique(ecoConseq$CROPDMGEXP)
 ```
 
+As we can see, the exponents have characters that need to be formatted to operate. We format them as it follows:
 ```{r}
 ## Numeric exponent for CROPDMG
 ecoConseq$CROPDMGEXP_NUM[is.na(ecoConseq$CROPDMGEXP)] <- 1
@@ -84,15 +132,54 @@ ecoConseq$CROPDMGEXP_NUM[ecoConseq$CROPDMGEXP == "m" & !is.na(ecoConseq$CROPDMGE
 ecoConseq$CROPDMGEXP_NUM[ecoConseq$CROPDMGEXP == "B" & !is.na(ecoConseq$CROPDMGEXP)] <- 1000000000
 ```
 
+To answer the second question ("Across the United States, which types of events have the greatest economic consequences?") we need to group all the observations by the event type and sum all the damages properly. Then, we sort them in descent order to find out which are the first 15 types of events that have the greatest economic consequences.
 ```{r}
+# Calculate the damages cost
 ecoConseq$CALPROPDMG <- ecoConseq$PROPDMG * ecoConseq$PROPDMGEXP_NUM
 ecoConseq$CALCROPDMG <- ecoConseq$CROPDMG * ecoConseq$CROPDMGEXP_NUM
-calEcoConseq <- ecoConseq %>% select(EVTYPE, CALPROPDMG, CALCROPDMG) %>% filter(CALPROPDMG != 0 & CALCROPDMG != 0) 
+
+calEcoConseq <- ecoConseq %>% select(EVTYPE, CALPROPDMG, CALCROPDMG) %>% group_by(EVTYPE) %>% summarise(CALPROPDMG = sum(CALPROPDMG), CALCROPDMG = sum(CALCROPDMG), .groups="drop") %>% filter(CALPROPDMG != 0 & CALCROPDMG != 0) %>% arrange(desc(CALPROPDMG + CALCROPDMG))
+
+# Create new variable to store the first 15 events
+top15calEcoConseq <- head(calEcoConseq, 15)
+
+# CALPROPDMG AND CALCROPDMG IN BILLIONS (US billions, i.e. 1.000.000.000)
+top15calEcoConseq$CALPROPDMG <- top15calEcoConseq$CALPROPDMG / 1000000000
+top15calEcoConseq$CALCROPDMG <- top15calEcoConseq$CALCROPDMG / 1000000000
+
+# Set EVTYPE as factor variable so that plot is sort properly
+top15calEcoConseq$EVTYPE <- factor(top15calEcoConseq$EVTYPE, levels=unique(top15calEcoConseq$EVTYPE))
+
+# Prepare the data for the barplot
+splitCEC <- melt(top15calEcoConseq, id.vars="EVTYPE")
+
+# Create the plot
+ecoConPlot <- ggplot(splitCEC, aes(x=EVTYPE, y=value, fill=variable)) +
+              geom_bar(position='stack', stat='identity') +
+              theme(axis.text.x=element_text(angle=90, hjust=1, vjust=.25), legend.title=element_blank()) +
+              ylab("Damage (Billions of US Dollars)") +
+              xlab("Event Type") +
+              ggtitle("Total Crop and Property Damage caused by Extreme Weather in the USA (1950 - 2011)")
 ```
 
-# Results
+# Results  
 
-#
+## Events that are most harmful with respect to population health
 
+```{r, fig.width=10, fig.height=7}
+top15populationHealth
+popHplot
+```
+  
+As we can see on the plot, the worst event is clearly the tornado, causing over 90.000 injuries and 5633 fatalities. It is followed by ecessive heat, flash flood, heat and lightning among others. 
+
+## Events that have the greatest economic consequences
+
+```{r, fig.width=10, fig.height=7}
+top15calEcoConseq
+ecoConPlot
+```
+  
+Plot shows that the event that causes the total greatest economic consequences is the flood. It is followed by the hurricane/typhoon, tornado and storm surge. If we look at the economic consecuences due crop damages, we see that drought is the worst event.
 
 
